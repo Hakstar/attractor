@@ -5,35 +5,33 @@ import utils_calculate as utils
 import matplotlib.pyplot as plt
 
 path = ''
-name = 'com-amazon.ungraph.txt'
-# name = 'Network_example.txt'
+# name = 'com-amazon.ungraph.txt'
+name = 'Network_example.txt'
 
 
 class Attractor:
     def __init__(self, beta):
-        self.beta = beta
-        self.edge_num = 0
-        self.node_num = 0
-        self.node_list = []
-        self.edge_list = []
+        self.beta = beta  # parameter lambda
+        self.edge_num = 0  # the number of edge
+        self.node_num = 0  # the number of node
+        self.node_list = []  # all nodes in Graph
+        self.edge_list = []  # all edges in Graph
 
-    def print_graph(self):
-        for i in range(len(self.edge_list)):
-            print(self.edge_list[i])
-
-    def load_data(self, path, name):
+    def init_data(self, path, name):
         with open(path + name, 'r') as f:
             lines = f.readlines()
-            edges = []
+            edges = [] # count edge and record
             for line in lines:
                 val = [int(s) for s in line.split()]
                 edges.append((val[0], val[1]))
-                self.node_num = max(self.node_num, val[0], val[1])
+                self.node_num = max(self.node_num, val[0], val[1])  # count total number of node
 
+            # init all nodes
             for i in range(self.node_num):
                 node = Node(i)
                 self.node_list.append(node)
 
+            # init Graph
             for j in range(len(edges)):
                 a, b = edges[j]
                 edge = Edge(a - 1, b - 1, i)
@@ -42,39 +40,45 @@ class Attractor:
                 self.node_list[a - 1].add_neighbor(b - 1, j)
                 self.node_list[b - 1].add_neighbor(a - 1, j)
 
-            print(self.edge_num, self.node_num)
-
+    # find edge index use node_1's id and node_2's id
     def find_edge(self, node_1, node_2):
         if node_2.get_id() in node_1.get_neighbor():
             return node_1.get_nei_edge()[node_1.get_neighbor().index(node_2.get_id())]
         return None
 
+    # calculate distance between node_1 and node_2
     def node_dist(self, node_1, node_2):
+        # node_1 is same as node_2
         if node_1 == node_2:
             return 0
+
+        # the edge between node_1 and node_2 is not exist, use their cn and Jaccard
         if self.find_edge(node_1, node_2) is None:
             sum_1 = 0
             sum_2 = 0
             cn = utils.calculate_cn(node_1, node_2)
             for i in range(len(cn)):
-                node_x = self.node_list[i]
+                node_x = self.node_list[cn[i]]
                 sum_1 += (self.node_dist(node_1, node_x) + self.node_dist(node_2, node_x))
 
-            all_edge = node_1.get_nei_edge().append(node_2.get_nei_edge())
-            all_edge = list(set(all_edge))
+            # record all edges connect to node_1 or node_2
+            all_edge = list(set(node_1.get_nei_edge() + node_2.get_nei_edge()))
             for j in range(len(all_edge)):
                 edge = self.edge_list[all_edge[j]]
                 sum_2 += edge.get_weight()
 
             return 1 - sum_1 / sum_2
         else:
+            # the edge between node_1 and node_2 is exist
             return self.edge_list[self.find_edge(node_1, node_2)].get_weight()
 
+    # calculate DI
     def DI(self, node_u, node_v):
         tep_1 = sin(1 - self.node_dist(node_u, node_v)) / node_u.get_deg()
         tep_2 = sin(1 - self.node_dist(node_u, node_v)) / node_v.get_deg()
         return 0 - (tep_1 + tep_2)
 
+    # calculate CI
     def CI(self, node_u, node_v):
         cn = utils.calculate_cn(node_u, node_v)
         sum = 0
@@ -88,19 +92,20 @@ class Attractor:
 
         return sum
 
+    # calculate rho, used in calculate EI
     def rho(self, node_x, node_v):
-        # rectify d
-        d = utils.jaccard_unweight(node_x, node_v)
+        d = self.node_dist(node_x, node_v)  # d(x,v)
         if 1 - d >= self.beta:
             return 1 - d
         else:
             return 1 - d - self.beta
 
+    # calculate EI
     def EI(self, node_u, node_v):
-        en_u = utils.calculate_diff(node_u, node_v)
-        en_v = utils.calculate_diff(node_v, node_u)
-        sum_1 = 0
-        sum_2 = 0
+        en_u = utils.calculate_diff(node_u, node_v)  # EN(u)
+        en_v = utils.calculate_diff(node_v, node_u)  # EN(v)
+        sum_1 = 0  # sum of x
+        sum_2 = 0  # sum of y
         for i in range(len(en_u)):
             node_x = self.node_list[en_u[i]]
             sum_1 -= (sin(1 - self.node_dist(node_x, node_u)) * self.rho(node_x, node_v)) / node_u.get_deg()
@@ -110,6 +115,7 @@ class Attractor:
             sum_2 -= (sin(1 - self.node_dist(node_y, node_v)) * self.rho(node_y, node_u)) / node_v.get_deg()
         return sum_1 + sum_2
 
+    # init all distance use Jaccard
     def distance_init(self):
         for i in range(len(self.edge_list)):
             edge_uv = self.edge_list[i]
@@ -129,6 +135,7 @@ class Attractor:
                 edge_vy = self.edge_list[self.find_edge(node_y, node_v)]
                 edge_vy.set_weight(utils.jaccard_unweight(node_v, node_y))
 
+    # interaction simulate
     def interaction(self):
         loop = 0
         flag = True
@@ -170,7 +177,7 @@ class Attractor:
 
 if __name__ == '__main__':
     attractor = Attractor(0.6)
-    attractor.load_data(path, name)
+    attractor.init_data(path, name)
     attractor.distance_init()
     attractor.interaction()
     attractor.draw_network()
