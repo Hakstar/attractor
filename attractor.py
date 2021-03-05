@@ -1,25 +1,21 @@
 from math import sin
-import itertools
 import networkx as nx
-from entity import Node, Edge, Graph
+from entity import Node, Edge
 import utils_calculate as utils
 import matplotlib.pyplot as plt
 
 path = ''
-# name = 'com-amazon.ungraph.txt'
-name = 'zarachy.txt'
+name = 'com-amazon.ungraph.txt'
+# name = 'Network_example.txt'
 
 
 class Attractor:
     def __init__(self, beta):
         self.beta = beta
-        self.edge_num = 78
-        self.node_num = 34
+        self.edge_num = 0
+        self.node_num = 0
         self.node_list = []
         self.edge_list = []
-        for i in range(self.node_num):
-            node = Node(i)
-            self.node_list.append(node)
 
     def print_graph(self):
         for i in range(len(self.edge_list)):
@@ -28,23 +24,29 @@ class Attractor:
     def load_data(self, path, name):
         with open(path + name, 'r') as f:
             lines = f.readlines()
-            i = 0
+            edges = []
             for line in lines:
-                value = [int(s) for s in line.split()]
-                a = value[0]
-                b = value[1]
+                val = [int(s) for s in line.split()]
+                edges.append((val[0], val[1]))
+                self.node_num = max(self.node_num, val[0], val[1])
+
+            for i in range(self.node_num):
+                node = Node(i)
+                self.node_list.append(node)
+
+            for j in range(len(edges)):
+                a, b = edges[j]
                 edge = Edge(a - 1, b - 1, i)
-                i += 1
                 self.edge_list.append(edge)
-                self.node_list[a - 1].add_neighbor(b - 1, i)
-                self.node_list[b - 1].add_neighbor(a - 1, i)
+                self.edge_num += 1
+                self.node_list[a - 1].add_neighbor(b - 1, j)
+                self.node_list[b - 1].add_neighbor(a - 1, j)
+
+            print(self.edge_num, self.node_num)
 
     def find_edge(self, node_1, node_2):
-        for i in range(len(self.edge_list)):
-            edge = self.edge_list[i]
-            if ((node_2.get_id() == edge.get_node_v()) and node_1.get_id() == edge.get_node_u()) or (
-                    (node_1.get_id() == edge.get_node_v()) and node_2.get_id() == edge.get_node_u()):
-                return edge.get_id()
+        if node_2.get_id() in node_1.get_neighbor():
+            return node_1.get_nei_edge()[node_1.get_neighbor().index(node_2.get_id())]
         return None
 
     def node_dist(self, node_1, node_2):
@@ -58,15 +60,11 @@ class Attractor:
                 node_x = self.node_list[i]
                 sum_1 += (self.node_dist(node_1, node_x) + self.node_dist(node_2, node_x))
 
-            un = utils.calculate_union(node_1, node_2)
-            x_y_list = list(itertools.combinations(un, 2))
-            for i in range(len(x_y_list)):
-                index_x = x_y_list[i][0]
-                index_y = x_y_list[i][1]
-                if self.find_edge(index_x, index_y) is None:
-                    continue
-                else:
-                    sum_2 += self.node_dist(self.node_list[index_x], self.node_list[index_y])
+            all_edge = node_1.get_nei_edge().append(node_2.get_nei_edge())
+            all_edge = list(set(all_edge))
+            for j in range(len(all_edge)):
+                edge = self.edge_list[all_edge[j]]
+                sum_2 += edge.get_weight()
 
             return 1 - sum_1 / sum_2
         else:
@@ -157,42 +155,6 @@ class Attractor:
 
         print("loop", loop)
 
-    def find_group(self):
-        zero_list = []
-        for i in range(len(self.edge_list)):
-            edge = self.edge_list[i]
-            if edge.get_weight() != 1:
-                zero_list.append(edge.get_id())
-        judge = [True for i in range(len(self.node_list))]
-
-        group = 0
-        i = 0
-        while True in judge:
-            if judge[i]:
-                group += 1
-                self.DFS(i, zero_list, judge)
-                i += 1
-            else:
-                i += 1
-        return group
-
-    def DFS(self, node, edge_list, judge):
-        judge[node] = False
-        node_t = self.node_list[node]
-        nei_edge = node_t.get_nei_edge()
-        for i in range(len(nei_edge)):
-            if nei_edge[i] in edge_list:
-                edge_list.remove(nei_edge[i])
-                edge = self.edge_list[nei_edge[i]]
-                node_1 = edge.get_node_u()
-                node_2 = edge.get_node_v()
-                if judge[node_1]:
-                    self.DFS(node_1, edge_list, judge)
-                elif judge[node_2]:
-                    self.DFS(node_2, edge_list, judge)
-            else:
-                continue
-
     def draw_network(self):
         G1 = nx.Graph()
         for i in range(len(self.node_list)):
@@ -201,8 +163,8 @@ class Attractor:
             edge = self.edge_list[i]
             if edge.get_weight() < 1:
                 G1.add_weighted_edges_from([(edge.get_node_u(), edge.get_node_v(), edge.get_weight())])
-
-        nx.draw(G1, with_labels=True)
+        print(nx.number_connected_components(G1))
+        nx.draw(G1)
         plt.show()
 
 
@@ -211,4 +173,4 @@ if __name__ == '__main__':
     attractor.load_data(path, name)
     attractor.distance_init()
     attractor.interaction()
-    print(attractor.find_group())
+    attractor.draw_network()

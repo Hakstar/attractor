@@ -1,4 +1,3 @@
-import itertools
-test_list=[1,2,3,4]
-a = list(itertools.combinations(test_list,2))
-print(a[0][1])
+a = [1,2,3,4,5]
+b = ['a','b','c','d','e']
+print(b[a.index(1)])
