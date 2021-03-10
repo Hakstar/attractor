@@ -4,6 +4,7 @@ class Node:
         self.neighbor = []
         self.nei_edge = []
         self.deg = 0
+        self.group = 0
 
     def add_neighbor(self, n_id, e_id):
         self.neighbor.append(n_id)
@@ -21,6 +22,12 @@ class Node:
 
     def get_nei_edge(self):
         return self.nei_edge
+
+    def get_group(self):
+        return self.group
+
+    def set_group(self, group_id):
+        self.group = group_id
 
 
 class Edge:

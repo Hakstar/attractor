@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 path = 'data/'
 name = 'football.txt'
 
+
 class Attractor:
     def __init__(self, beta):
         self.beta = beta  # parameter lambda
@@ -154,6 +155,36 @@ class Attractor:
                 G1.add_weighted_edges_from([(edge.get_node_u(), edge.get_node_v(), edge.get_weight())])
         print(nx.number_connected_components(G1))
 
+    def find_group(self):
+        zero_edge = []
+        for edge in self.edge_list:
+            if edge.get_weight() == 0:
+                zero_edge.append(edge.get_id())
+
+        visited = [0 for i in range(self.node_num)]
+        group_id = 0
+        while 0 in visited:
+            group_id += 1
+            node_id = visited.index(0)
+            self.DFS(visited, node_id, group_id, zero_edge)
+
+    def DFS(self, visited, node_id, group_id, zero_edge):
+        visited[node_id] = 1
+        node = self.node_list[node_id]
+        node.set_group(group_id)
+        nei_edge = node.get_nei_edge()
+        nei = node.get_neighbor()
+        i = 0
+        while i < len(nei):
+            if (nei_edge[i] in zero_edge) and (visited[nei[i]] == 0):
+                self.DFS(visited, nei[i], group_id, zero_edge)
+            else:
+                i += 1
+
+    def print_group_inf(self):
+        for node in self.node_list:
+            print("node_id:" + str(node.get_id()), " belongs to group_id:"+str(node.get_group()))
+
 
 if __name__ == '__main__':
     attractor = Attractor(0.6)
@@ -161,3 +192,5 @@ if __name__ == '__main__':
     attractor.distance_init()
     attractor.interaction()
     attractor.draw_network()
+    attractor.find_group()
+    attractor.print_group_inf()
